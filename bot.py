@@ -90,6 +90,7 @@ class ShiftView(discord.ui.View):
     def __init__(self, user):
         super().__init__(timeout=300)
         self.user = user
+        self.message = None
         self.refresh_buttons()
 
     def refresh_buttons(self):
@@ -104,6 +105,14 @@ class ShiftView(discord.ui.View):
         self.end_btn.disabled = not shift
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        async def on_timeout(self):
+            for child in self.children:
+                child.disabled = True
+            if self.message:
+                try:
+                    await self.message.edit(view=self)
+                except discord.HTTPException:
+                    pass
         if interaction.user.id != self.user.id:
             await interaction.response.send_message("This isn't your panel.", ephemeral=True)
             return False
@@ -190,9 +199,8 @@ async def ping(interaction: discord.Interaction):
 @shift.command(name="manage", description="Open your shift panel")
 async def shift_manage(interaction: discord.Interaction):
     view = ShiftView(interaction.user)
-    await interaction.response.send_message(
-        embed=build_embed(interaction.user), view=view, ephemeral=True
-    )
+    await interaction.response.send_message(embed=build_embed(interaction.user), view=view)
+    view.message = await interaction.original_response()
 
 
 @shift.command(name="active", description="See who is currently on shift")
@@ -219,11 +227,27 @@ async def shift_active(interaction: discord.Interaction):
 @app_commands.describe(member="Member to check (defaults to you)")
 async def shift_time(interaction: discord.Interaction, member: discord.Member | None = None):
     target = member or interaction.user
-    total = total_time(target.id, int(time.time()))
-    await interaction.response.send_message(
-        f"{target.display_name}: {fmt(total)} total shift time (breaks excluded)",
-        allowed_mentions=discord.AllowedMentions.none(),
-    )
+    now = int(time.time())
+    total = total_time(target.id, now)
+    shift_count = db.execute(
+        "SELECT COUNT(*) FROM shifts WHERE user_id=?", (target.id,)
+    ).fetchone()[0]
+
+    open_shift = get_open_shift(target.id)
+    if not open_shift:
+        status, color = "Off Duty", discord.Color.light_grey()
+    elif get_open_break(open_shift[0]):
+        status, color = "On Break", discord.Color.orange()
+    else:
+        status, color = "On Duty", discord.Color.green()
+
+    embed = discord.Embed(title="Shift Time", color=color)
+    embed.set_author(name=target.display_name, icon_url=target.display_avatar.url)
+    embed.add_field(name="Total time on duty", value=fmt(total), inline=False)
+    embed.add_field(name="Shifts logged", value=str(shift_count), inline=True)
+    embed.add_field(name="Status", value=status, inline=True)
+    embed.set_footer(text="Break time is excluded")
+    await interaction.response.send_message(embed=embed)
 
 
 bot.run(os.getenv("DISCORD_TOKEN"))
