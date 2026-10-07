@@ -206,22 +206,40 @@ async def shift_manage(interaction: discord.Interaction):
 
 @shift.command(name="active", description="See who is currently on shift")
 async def shift_active(interaction: discord.Interaction):
+    now = int(time.time())
     rows = db.execute(
-        """SELECT s.user_id, s.start_ts,
-                  EXISTS(SELECT 1 FROM breaks b WHERE b.shift_id = s.id AND b.end_ts IS NULL)
-           FROM shifts s WHERE s.end_ts IS NULL ORDER BY s.start_ts"""
+        "SELECT id, user_id, start_ts FROM shifts WHERE end_ts IS NULL ORDER BY start_ts"
     ).fetchall()
+
+    on_duty, on_break = [], []
+    for shift_id, uid, start in rows:
+        worked = now - start - break_total(shift_id, now)
+        line = f"<@{uid}> ({fmt(worked)})"
+        if get_open_break(shift_id):
+            on_break.append(line)
+        else:
+            on_duty.append(line)
+
     if not rows:
-        await interaction.response.send_message("Nobody is on shift right now.")
-        return
-    lines = [
-        f"<@{uid}> — {'On Break' if on_break else 'On Duty'} (since <t:{start}:R>)"
-        for uid, start, on_break in rows
-    ]
-    await interaction.response.send_message(
-        "**On shift:**\n" + "\n".join(lines),
-        allowed_mentions=discord.AllowedMentions.none(),
-    )
+        embed = discord.Embed(
+            title="Active Shifts",
+            description="Nobody is on shift right now.",
+            color=discord.Color.light_grey(),
+        )
+    else:
+        sections = []
+        if on_duty:
+            sections.append("**On Duty**\n" + "\n".join(on_duty))
+        if on_break:
+            sections.append("**On Break**\n" + "\n".join(on_break))
+        embed = discord.Embed(
+            title="Active Shifts",
+            description="\n\n".join(sections),
+            color=discord.Color.green(),
+        )
+        embed.set_footer(text=f"{len(rows)} on shift")
+
+    await interaction.response.send_message(embed=embed)
 
 
 @shift.command(name="time", description="Show total shift time")
