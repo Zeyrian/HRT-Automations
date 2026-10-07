@@ -82,6 +82,7 @@ def build_embed(user):
         embed.add_field(name="Started", value=f"<t:{start}:R>", inline=True)
         embed.add_field(name="Time on duty", value=fmt(now - start - breaks), inline=True)
         embed.add_field(name="Break time", value=fmt(breaks), inline=True)
+    embed.add_field(name="Total shift time", value=fmt(total_time(user.id, now)), inline=False)
     embed.set_footer(text=user.display_name)
     return embed
 
