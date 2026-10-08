@@ -28,7 +28,7 @@ class General(commands.Cog):
             ]
             embed.add_field(name=section, value="\n".join(lines), inline=False)
         embed.set_footer(text=f"{sum(len(c) for c in sections.values())} commands")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(embed=embed)
 
 
 async def setup(bot):
