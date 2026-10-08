@@ -2,7 +2,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+import config
+from checks import is_shift_member
 from database import (
+    all_totals,
     break_total,
     count_shifts,
     get_active_shifts,
@@ -15,10 +18,16 @@ from utils import fmt
 from views.shift_panel import ShiftView, build_embed
 
 
+@app_commands.guild_only()
 class Shifts(commands.GroupCog, group_name="shift", group_description="HRT shift commands"):
     def __init__(self, bot):
         self.bot = bot
         super().__init__()
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if is_shift_member(interaction.user):
+            return True
+        raise app_commands.CheckFailure("You need the shift role to use shift commands.")
 
     @app_commands.command(name="manage", description="Open your shift panel")
     async def manage(self, interaction: discord.Interaction):
@@ -81,6 +90,53 @@ class Shifts(commands.GroupCog, group_name="shift", group_description="HRT shift
         embed.add_field(name="Shifts logged", value=str(count_shifts(target.id)), inline=True)
         embed.add_field(name="Status", value=status, inline=True)
         embed.set_footer(text="Break time is excluded")
+        await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="leaderboard", description="Shift time leaderboard")
+    async def leaderboard(self, interaction: discord.Interaction):
+        role = interaction.guild.get_role(config.LEADERBOARD_ROLE_ID)
+        if role is None:
+            await interaction.response.send_message(
+                "The leaderboard role isn't set up. Check LEADERBOARD_ROLE_ID in config.py.",
+                ephemeral=True,
+            )
+            return
+
+        totals = all_totals(now_ts())
+        ranked = sorted(
+            ((m, totals.get(m.id, 0)) for m in role.members if not m.bot),
+            key=lambda pair: pair[1],
+            reverse=True,
+        )
+
+        if not ranked:
+            embed = discord.Embed(
+                title="Shift Leaderboard",
+                description="No members have the leaderboard role.",
+                color=discord.Color.gold(),
+            )
+            await interaction.response.send_message(embed=embed)
+            return
+
+        medals = {1: "🥇", 2: "🥈", 3: "🥉"}
+        lines = [
+            f"{medals.get(i, f'**{i}.**')} {member.mention} — {fmt(secs)}"
+            for i, (member, secs) in enumerate(ranked, start=1)
+        ]
+
+        shown, size = [], 0
+        for line in lines:
+            if size + len(line) + 1 > 3900:
+                break
+            shown.append(line)
+            size += len(line) + 1
+
+        embed = discord.Embed(
+            title="Shift Leaderboard",
+            description="\n".join(shown),
+            color=discord.Color.gold(),
+        )
+        embed.set_footer(text=f"Showing {len(shown)} of {len(lines)} members · breaks excluded")
         await interaction.response.send_message(embed=embed)
 
 

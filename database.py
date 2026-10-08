@@ -67,27 +67,33 @@ def get_active_shifts():
 
 
 def start_shift(uid):
+    """Starts a shift. Returns the new shift ID, or None if already on shift."""
     if get_open_shift(uid):
-        return
-    db.execute("INSERT INTO shifts (user_id, start_ts) VALUES (?, ?)", (uid, now_ts()))
+        return None
+    cur = db.execute("INSERT INTO shifts (user_id, start_ts) VALUES (?, ?)", (uid, now_ts()))
     db.commit()
+    return cur.lastrowid
 
 
 def toggle_break(uid):
+    """Starts or ends a break. Returns (shift_id, 'started' | 'ended', break_seconds), or None if not on shift."""
     shift = get_open_shift(uid)
     if not shift:
-        return
+        return None
+    shift_id = shift[0]
     now = now_ts()
-    open_break = get_open_break(shift[0])
+    open_break = get_open_break(shift_id)
     if open_break:
         db.execute("UPDATE breaks SET end_ts=? WHERE id=?", (now, open_break[0]))
-    else:
-        db.execute("INSERT INTO breaks (shift_id, start_ts) VALUES (?, ?)", (shift[0], now))
+        db.commit()
+        return shift_id, "ended", now - open_break[1]
+    db.execute("INSERT INTO breaks (shift_id, start_ts) VALUES (?, ?)", (shift_id, now))
     db.commit()
+    return shift_id, "started", None
 
 
 def end_shift(uid):
-    """Ends the open shift. Returns (on_duty_seconds, break_seconds), or None if not on shift."""
+    """Ends the open shift. Returns (shift_id, on_duty_seconds, break_seconds), or None if not on shift."""
     shift = get_open_shift(uid)
     if not shift:
         return None
@@ -99,4 +105,21 @@ def end_shift(uid):
     db.execute("UPDATE shifts SET end_ts=? WHERE id=?", (now, shift_id))
     db.commit()
     breaks = break_total(shift_id, now)
-    return now - start - breaks, breaks
+    return shift_id, now - start - breaks, breaks
+
+
+def all_totals(now):
+    """Returns {user_id: total on-duty seconds} for everyone with logged shifts."""
+    totals = {}
+    for uid, secs in db.execute(
+        "SELECT user_id, SUM(COALESCE(end_ts, ?) - start_ts) FROM shifts GROUP BY user_id",
+        (now,),
+    ):
+        totals[uid] = secs
+    for uid, secs in db.execute(
+        """SELECT s.user_id, SUM(COALESCE(b.end_ts, ?) - b.start_ts)
+           FROM breaks b JOIN shifts s ON s.id = b.shift_id GROUP BY s.user_id""",
+        (now,),
+    ):
+        totals[uid] = totals.get(uid, 0) - secs
+    return totals
