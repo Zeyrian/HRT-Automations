@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 
 import config
-from checks import is_shift_member
+from checks import admin_only, is_shift_member
 from database import (
     all_totals,
     break_total,
@@ -16,6 +16,7 @@ from database import (
 )
 from utils import fmt
 from views.shift_panel import ShiftView, build_embed
+from views.admin_panel import AdminView, build_admin_embed
 
 
 @app_commands.guild_only()
@@ -139,6 +140,18 @@ class Shifts(commands.GroupCog, group_name="shift", group_description="HRT shift
         embed.set_footer(text=f"Showing {len(shown)} of {len(lines)} members · breaks excluded")
         await interaction.response.send_message(embed=embed)
 
+    @app_commands.command(name="admin", description="Manage a member's shift (admins only)")
+    @app_commands.describe(member="Member to manage")
+    @admin_only()
+    async def admin(self, interaction: discord.Interaction, member: discord.Member):
+        if member.bot:
+            await interaction.response.send_message("Bots don't have shifts.", ephemeral=True)
+            return
+        view = AdminView(interaction.user, member)
+        await interaction.response.send_message(
+            embed=build_admin_embed(member), view=view, ephemeral=True
+        )
+        view.interaction = interaction
 
 async def setup(bot):
     await bot.add_cog(Shifts(bot))

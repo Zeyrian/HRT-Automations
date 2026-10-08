@@ -123,3 +123,46 @@ def all_totals(now):
     ):
         totals[uid] = totals.get(uid, 0) - secs
     return totals
+
+def get_recent_shifts(uid, limit=25):
+    return db.execute(
+        "SELECT id, start_ts, end_ts FROM shifts WHERE user_id=? ORDER BY id DESC LIMIT ?",
+        (uid, limit),
+    ).fetchall()
+
+
+def shift_on_duty(shift_id, start, end, now):
+    return (end or now) - start - break_total(shift_id, now)
+
+
+def delete_shift(shift_id, uid):
+    """Deletes a shift and its breaks. Returns the deleted shift's on-duty seconds, or None if not found."""
+    row = db.execute(
+        "SELECT start_ts, end_ts FROM shifts WHERE id=? AND user_id=?", (shift_id, uid)
+    ).fetchone()
+    if not row:
+        return None
+    start, end = row
+    on_duty = shift_on_duty(shift_id, start, end, now_ts())
+    db.execute("DELETE FROM breaks WHERE shift_id=?", (shift_id,))
+    db.execute("DELETE FROM shifts WHERE id=?", (shift_id,))
+    db.commit()
+    return on_duty
+
+
+def modify_shift(shift_id, uid, minutes):
+    """Adds (or removes, if negative) minutes by moving the shift's start time.
+    Returns (new_on_duty_seconds, None) on success, or (None, error_message)."""
+    row = db.execute(
+        "SELECT start_ts, end_ts FROM shifts WHERE id=? AND user_id=?", (shift_id, uid)
+    ).fetchone()
+    if not row:
+        return None, "That shift no longer exists."
+    start, end = row
+    new_start = start - minutes * 60
+    new_on_duty = shift_on_duty(shift_id, new_start, end, now_ts())
+    if new_on_duty < 0:
+        return None, "That would make the shift's time negative."
+    db.execute("UPDATE shifts SET start_ts=? WHERE id=?", (new_start, shift_id))
+    db.commit()
+    return new_on_duty, None
