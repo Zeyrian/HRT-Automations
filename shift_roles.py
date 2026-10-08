@@ -9,10 +9,11 @@ async def set_shift_role(member, state):
     on_break = member.guild.get_role(config.ON_BREAK_ROLE_ID)
 
     wanted = {"on_duty": on_duty, "on_break": on_break}.get(state)
-    unwanted = [r for r in (on_duty, on_break) if r is not None and r is not wanted]
-
-    to_add = [wanted] if wanted is not None and wanted not in member.roles else []
-    to_remove = [r for r in unwanted if r in member.roles]
+    to_add = [wanted] if wanted is not None else []
+    to_remove = [
+        r for r in (on_duty, on_break)
+        if r is not None and (wanted is None or r.id != wanted.id)
+    ]
 
     try:
         if to_remove:
