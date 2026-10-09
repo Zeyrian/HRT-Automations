@@ -12,6 +12,7 @@ EXTENSIONS = [
     "cogs.general",
     "cogs.shifts",
     "cogs.wave",
+    "cogs.activity",
 ]
 
 

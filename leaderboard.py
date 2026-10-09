@@ -62,12 +62,7 @@ def build_leaderboard_embed(guild, title="Shift Leaderboard", note=None):
     return _leaderboard_embed(ranked, title, note)
 
 
-def build_wave_embeds(guild, quota_seconds, note=None):
-    """Returns [leaderboard, quota met, quota not met] embeds, or None if the role isn't found."""
-    ranked = get_ranked(guild)
-    if ranked is None:
-        return None
-
+def _quota_embeds(ranked, quota_seconds):
     met = [(m, s) for m, s in ranked if s >= quota_seconds]
     not_met = [(m, s) for m, s in ranked if s < quota_seconds]
     quota_text = f"Quota: {fmt(quota_seconds)}"
@@ -76,7 +71,6 @@ def build_wave_embeds(guild, quota_seconds, note=None):
         return [f"{member.mention} — {fmt(secs)}" for member, secs in pairs]
 
     return [
-        _leaderboard_embed(ranked, "Shift Leaderboard", note),
         _list_embed(
             "Quota Met", lines(met), discord.Color.green(),
             "Nobody met the quota.", f"{quota_text} · {len(met)} members",
@@ -86,3 +80,21 @@ def build_wave_embeds(guild, quota_seconds, note=None):
             "Everybody met the quota.", f"{quota_text} · {len(not_met)} members",
         ),
     ]
+
+
+def build_quota_embeds(guild, quota_seconds):
+    """Returns [quota met, quota not met] embeds, or None if the leaderboard role isn't found."""
+    ranked = get_ranked(guild)
+    if ranked is None:
+        return None
+    return _quota_embeds(ranked, quota_seconds)
+
+
+def build_wave_embeds(guild, quota_seconds, note=None):
+    """Returns [leaderboard, quota met, quota not met] embeds, or None if the role isn't found."""
+    ranked = get_ranked(guild)
+    if ranked is None:
+        return None
+    return [_leaderboard_embed(ranked, "Shift Leaderboard", note)] + _quota_embeds(
+        ranked, quota_seconds
+    )
