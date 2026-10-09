@@ -2,6 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from leaderboard import build_leaderboard_embed
+from views.leaderboard import LeaderboardView
 
 import config
 from checks import admin_only, is_shift_member
@@ -103,7 +104,9 @@ class Shifts(commands.GroupCog, group_name="shift", group_description="HRT shift
                 ephemeral=True,
             )
             return
-        await interaction.response.send_message(embed=embed)
+        view = LeaderboardView()
+        await interaction.response.send_message(embed=embed, view=view)
+        view.interaction = interaction
 
     @app_commands.command(name="admin", description="Manage a member's shift (admins only)")
     @app_commands.describe(member="Member to manage")

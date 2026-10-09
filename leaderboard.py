@@ -1,7 +1,8 @@
+from datetime import datetime, timezone
 import discord
 
 import config
-from database import all_totals, now_ts
+from database import all_totals, count_shifts, now_ts
 from utils import fmt
 
 MEDALS = {1: "🥇", 2: "🥈", 3: "🥉"}
@@ -98,3 +99,25 @@ def build_wave_embeds(guild, quota_seconds, note=None):
     return [_leaderboard_embed(ranked, "Shift Leaderboard", note)] + _quota_embeds(
         ranked, quota_seconds
     )
+
+def build_raw_data(guild):
+    """Returns the leaderboard as plain text for a .txt export, or None if the role isn't found."""
+    ranked = get_ranked(guild)
+    if ranked is None:
+        return None
+
+    generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    lines = [
+        "HRT Shift Leaderboard - Raw Shift Data",
+        f"Generated: {generated}",
+        f"Members: {len(ranked)}",
+        "Breaks are excluded from all times.",
+        "Time from shifts in progress is counted up to the moment this file was generated.",
+        "",
+    ]
+    for i, (member, secs) in enumerate(ranked, start=1):
+        lines.append(
+            f"{i}. {member.display_name} (ID: {member.id}) | "
+            f"Total: {fmt(secs)} ({int(secs)} seconds) | Shifts: {count_shifts(member.id)}"
+        )
+    return "\n".join(lines) + "\n"
