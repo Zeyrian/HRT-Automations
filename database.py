@@ -3,6 +3,7 @@ import sqlite3
 import time
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "hrt.db")
+BACKUP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backups")
 
 db = sqlite3.connect(DB_PATH)
 db.execute("""CREATE TABLE IF NOT EXISTS shifts (
@@ -166,3 +167,29 @@ def modify_shift(shift_id, uid, minutes):
     db.execute("UPDATE shifts SET start_ts=? WHERE id=?", (new_start, shift_id))
     db.commit()
     return new_on_duty, None
+
+def count_all_shifts():
+    return db.execute("SELECT COUNT(*) FROM shifts").fetchone()[0]
+
+
+def backup_database():
+    """Copies hrt.db into backups/ with a timestamp. Returns the backup file path."""
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+    path = os.path.join(BACKUP_DIR, f"hrt-{time.strftime('%Y%m%d-%H%M%S')}.db")
+    dest = sqlite3.connect(path)
+    try:
+        db.backup(dest)
+    finally:
+        dest.close()
+    return path
+
+
+def wipe_all_shifts():
+    """Deletes every shift and break. Returns the user IDs that had an open shift."""
+    open_users = [
+        row[0] for row in db.execute("SELECT user_id FROM shifts WHERE end_ts IS NULL")
+    ]
+    db.execute("DELETE FROM breaks")
+    db.execute("DELETE FROM shifts")
+    db.commit()
+    return open_users
