@@ -11,6 +11,7 @@ load_dotenv()
 EXTENSIONS = [
     "cogs.general",
     "cogs.shifts",
+    "cogs.wave",
 ]
 
 

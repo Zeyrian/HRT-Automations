@@ -5,3 +5,4 @@ SHIFT_ADMIN_ROLE_ID = 1545188154523254825       # role allowed to use shift admi
 LEADERBOARD_ROLE_ID = SHIFT_ROLE_ID   # members with this role appear on the leaderboard
 ON_DUTY_ROLE_ID = 1545196056487395450     # given while on duty
 ON_BREAK_ROLE_ID = 1545196115115114557    # given while on break (replaces the on-duty role)
+WAVE_CHANNEL_ID = 1551002984601616565     # channel where the final leaderboard is posted when a wave ends

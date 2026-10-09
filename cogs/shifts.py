@@ -1,6 +1,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
+from leaderboard import build_leaderboard_embed
 
 import config
 from checks import admin_only, is_shift_member
@@ -95,49 +96,13 @@ class Shifts(commands.GroupCog, group_name="shift", group_description="HRT shift
 
     @app_commands.command(name="leaderboard", description="Shift time leaderboard")
     async def leaderboard(self, interaction: discord.Interaction):
-        role = interaction.guild.get_role(config.LEADERBOARD_ROLE_ID)
-        if role is None:
+        embed = build_leaderboard_embed(interaction.guild)
+        if embed is None:
             await interaction.response.send_message(
                 "The leaderboard role isn't set up. Check LEADERBOARD_ROLE_ID in config.py.",
                 ephemeral=True,
             )
             return
-
-        totals = all_totals(now_ts())
-        ranked = sorted(
-            ((m, totals.get(m.id, 0)) for m in role.members if not m.bot),
-            key=lambda pair: pair[1],
-            reverse=True,
-        )
-
-        if not ranked:
-            embed = discord.Embed(
-                title="Shift Leaderboard",
-                description="No members have the leaderboard role.",
-                color=discord.Color.gold(),
-            )
-            await interaction.response.send_message(embed=embed)
-            return
-
-        medals = {1: "🥇", 2: "🥈", 3: "🥉"}
-        lines = [
-            f"{medals.get(i, f'**{i}.**')} {member.mention} — {fmt(secs)}"
-            for i, (member, secs) in enumerate(ranked, start=1)
-        ]
-
-        shown, size = [], 0
-        for line in lines:
-            if size + len(line) + 1 > 3900:
-                break
-            shown.append(line)
-            size += len(line) + 1
-
-        embed = discord.Embed(
-            title="Shift Leaderboard",
-            description="\n".join(shown),
-            color=discord.Color.gold(),
-        )
-        embed.set_footer(text=f"Showing {len(shown)} of {len(lines)} members · breaks excluded")
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="admin", description="Manage a member's shift (admins only)")
