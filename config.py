@@ -6,3 +6,4 @@ LEADERBOARD_ROLE_ID = SHIFT_ROLE_ID   # members with this role appear on the lea
 ON_DUTY_ROLE_ID = 1545196056487395450     # given while on duty
 ON_BREAK_ROLE_ID = 1545196115115114557    # given while on break (replaces the on-duty role)
 WAVE_CHANNEL_ID = 1551002984601616565     # channel where the final leaderboard is posted when a wave ends
+QUOTA_HOURS = 1      # shift hours needed per wave to meet quota, e.g. 3 or 2.5

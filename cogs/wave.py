@@ -7,7 +7,7 @@ from discord.ext import commands
 import config
 from checks import admin_only
 from database import backup_database, count_all_shifts, get_active_shifts, wipe_all_shifts
-from leaderboard import build_leaderboard_embed
+from leaderboard import build_wave_embeds
 from shift_roles import set_shift_role
 
 
@@ -49,12 +49,20 @@ class ConfirmView(discord.ui.View):
 
         guild = interaction.guild
         channel = await get_wave_channel(interaction.client)
-        embed = build_leaderboard_embed(
-            guild, title="Wave Leaderboard", note=f"Wave ended by {self.admin.display_name}"
+        quota_seconds = int((config.QUOTA_HOURS or 0) * 3600)
+        embeds = (
+            build_wave_embeds(
+                guild, quota_seconds, note=f"Wave ended by {self.admin.display_name}"
+            )
+            if quota_seconds > 0
+            else None
         )
-        if channel is None or embed is None:
+        if channel is None or embeds is None:
             await interaction.edit_original_response(
-                content="Couldn't end the wave. Check WAVE_CHANNEL_ID and LEADERBOARD_ROLE_ID in config.py. Nothing was changed."
+                content=(
+                    "Couldn't end the wave. Check WAVE_CHANNEL_ID, LEADERBOARD_ROLE_ID and "
+                    "QUOTA_HOURS in config.py. Nothing was changed."
+                )
             )
             return
 
@@ -68,11 +76,15 @@ class ConfirmView(discord.ui.View):
             return
 
         try:
-            await channel.send(embed=embed)
+            for embed in embeds:
+                await channel.send(embed=embed)
         except discord.HTTPException as e:
-            print(f"Could not post the wave leaderboard: {e}")
+            print(f"Could not post the wave embeds: {e}")
             await interaction.edit_original_response(
-                content="Couldn't post in the wave channel. Check the bot's permissions there. Nothing was changed."
+                content=(
+                    "Couldn't post everything in the wave channel. Check the bot's permissions "
+                    "there. Nothing was wiped, but some embeds may already have been posted."
+                )
             )
             return
 
@@ -85,8 +97,8 @@ class ConfirmView(discord.ui.View):
 
         await interaction.edit_original_response(
             content=(
-                f"Wave ended. The leaderboard was posted in {channel.mention} and "
-                f"{total} shifts were wiped. Backup: `{os.path.basename(backup_path)}`"
+                f"Wave ended. The leaderboard and quota results were posted in {channel.mention} "
+                f"and {total} shifts were wiped. Backup: `{os.path.basename(backup_path)}`"
             )
         )
 
@@ -105,14 +117,19 @@ class Wave(commands.GroupCog, group_name="wave", group_description="HRT wave com
         super().__init__()
 
     @app_commands.command(
-        name="end", description="Post the final leaderboard and reset all shifts (admins only)"
+        name="end", description="Post the leaderboard and quota results, then reset all shifts (admins only)"
     )
     @admin_only()
     async def end(self, interaction: discord.Interaction):
         channel = await get_wave_channel(interaction.client)
-        if channel is None or interaction.guild.get_role(config.LEADERBOARD_ROLE_ID) is None:
+        if (
+            channel is None
+            or interaction.guild.get_role(config.LEADERBOARD_ROLE_ID) is None
+            or not config.QUOTA_HOURS
+        ):
             await interaction.response.send_message(
-                "Wave setup is incomplete. Check WAVE_CHANNEL_ID and LEADERBOARD_ROLE_ID in config.py.",
+                "Wave setup is incomplete. Check WAVE_CHANNEL_ID, LEADERBOARD_ROLE_ID and "
+                "QUOTA_HOURS in config.py.",
                 ephemeral=True,
             )
             return
@@ -120,8 +137,8 @@ class Wave(commands.GroupCog, group_name="wave", group_description="HRT wave com
         total = count_all_shifts()
         active = len(get_active_shifts())
         description = (
-            f"This posts the current leaderboard in {channel.mention} and permanently wipes "
-            f"**{total}** shifts.\n"
+            f"This posts the leaderboard and quota results (quota: **{config.QUOTA_HOURS:g}** hours) "
+            f"in {channel.mention} and permanently wipes **{total}** shifts.\n"
         )
         if active:
             description += (
