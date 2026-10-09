@@ -108,7 +108,9 @@ def build_raw_data(guild):
 
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     lines = [
-        
+        "HRT Shift Leaderboard — Raw Shift Data",
+        f"Generated: {generated}",
+        "",
     ]
     for i, (member, secs) in enumerate(ranked, start=1):
         lines.append(
