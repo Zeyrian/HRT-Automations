@@ -1,6 +1,7 @@
 import re
 
 import discord
+from leave_roles import set_leave_role
 
 import config
 from checks import is_shift_admin
@@ -136,6 +137,8 @@ class ReviewView(discord.ui.View):
 
         guild_name = interaction.guild.name
         if approved:
+            if member is not None:
+                await set_leave_role(member, True)
             await notify_member(
                 member,
                 f"Your leave request #{leave_id} in {guild_name} was approved. "
@@ -143,7 +146,6 @@ class ReviewView(discord.ui.View):
             )
         else:
             await notify_member(member, f"Your leave request #{leave_id} in {guild_name} was denied.")
-
 
 class RequestModal(discord.ui.Modal, title="Request Leave"):
     days = discord.ui.TextInput(label="Duration (days)", placeholder="e.g. 7", max_length=3)

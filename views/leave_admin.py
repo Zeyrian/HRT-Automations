@@ -3,6 +3,7 @@ import discord
 import config
 from leave_db import end_early, get_active, get_pending, get_recent, grant
 from views.leave_panel import notify_member
+from leave_roles import set_leave_role
 
 
 def build_leave_admin_embed(target):
@@ -76,6 +77,7 @@ class GrantModal(discord.ui.Modal, title="Grant Leave"):
         await self.panel.refresh(
             interaction, notice=f"Granted leave #{leave_id} for {days} day(s)."
         )
+        await set_leave_role(target, True)
         await notify_member(
             target,
             f"An admin granted you a leave of absence ({days} day(s)) in {interaction.guild.name}.",
@@ -125,7 +127,9 @@ class LeaveAdminView(discord.ui.View):
         notice = f"Ended leave #{leave_id} early." if leave_id else "They have no active leave."
         await self.refresh(interaction, notice=notice)
         if leave_id:
+            await set_leave_role(self.target, False)
             await notify_member(
                 self.target,
-                f"Your leave #{leave_id} in {interaction.guild.name} was ended early by an admin.",
+                f"Your leave #{leave_id} in {interaction.guild.name} was ended early by "
+                f"{interaction.user.display_name}.",
             )

@@ -1,9 +1,11 @@
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 
+import config
 from checks import admin_only, is_shift_member
-from leave_db import get_all_active
+from leave_db import get_active, get_all_active
+from leave_roles import set_leave_role
 from views.leave_admin import LeaveAdminView, build_leave_admin_embed
 from views.leave_panel import LeaveView, ReviewView, build_leave_embed
 
@@ -17,6 +19,28 @@ class Leave(commands.GroupCog, group_name="leave", group_description="HRT leave 
     async def cog_load(self):
         # Keeps Approve/Deny buttons on old requests working after a restart.
         self.bot.add_view(ReviewView())
+        self.expire_roles.start()
+
+    async def cog_unload(self):
+        self.expire_roles.cancel()
+
+    @tasks.loop(minutes=1)
+    async def expire_roles(self):
+        """Removes the on-leave role from anyone whose leave has ended or expired."""
+        for guild in self.bot.guilds:
+            role = guild.get_role(config.ON_LEAVE_ROLE_ID)
+            if role is None:
+                continue
+            for member in role.members:
+                try:
+                    if not get_active(member.id):
+                        await set_leave_role(member, False)
+                except Exception as e:
+                    print(f"Leave role check failed for {member.id}: {e}")
+
+    @expire_roles.before_loop
+    async def before_expire_roles(self):
+        await self.bot.wait_until_ready()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if is_shift_member(interaction.user):
