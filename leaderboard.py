@@ -95,13 +95,23 @@ def _quota_embeds(ranked, quota_seconds):
         ),
     ]
 
+def _total_embed(ranked):
+    total = sum(secs for _, secs in ranked)
+    embed = discord.Embed(
+        title="Total HRT Shift Time",
+        description=f"**{fmt(total)}**",
+        color=discord.Color.purple(),
+    )
+    embed.set_footer(text=f"{len(ranked)} members · breaks excluded")
+    return embed
 
 def build_quota_embeds(guild, quota_seconds):
-    """Returns [quota met, quota not met, quota exempted] embeds, or None if the role isn't found."""
+    """Returns [quota met, quota not met, quota exempted, total time] embeds,
+    or None if the leaderboard role isn't found."""
     ranked = get_ranked(guild)
     if ranked is None:
         return None
-    return _quota_embeds(ranked, quota_seconds)
+    return _quota_embeds(ranked, quota_seconds) + [_total_embed(ranked)]
 
 
 def build_wave_embeds(guild, quota_seconds, note=None):
