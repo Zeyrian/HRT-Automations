@@ -115,12 +115,15 @@ def build_quota_embeds(guild, quota_seconds):
 
 
 def build_wave_embeds(guild, quota_seconds, note=None):
-    """Returns [leaderboard, quota met, quota not met, quota exempted], or None if the role isn't found."""
+    """Returns [leaderboard, quota met, quota not met, quota exempted, total time],
+    or None if the leaderboard role isn't found."""
     ranked = get_ranked(guild)
     if ranked is None:
         return None
-    return [_leaderboard_embed(ranked, "Shift Leaderboard", note)] + _quota_embeds(
-        ranked, quota_seconds
+    return (
+        [_leaderboard_embed(ranked, "Shift Leaderboard", note)]
+        + _quota_embeds(ranked, quota_seconds)
+        + [_total_embed(ranked)]
     )
 
 
