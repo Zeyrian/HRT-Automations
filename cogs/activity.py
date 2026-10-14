@@ -33,7 +33,8 @@ class Activity(commands.Cog):
             return
 
         await interaction.response.send_message(embed=embeds[0])
-        await interaction.followup.send(embed=embeds[1])
+        for embed in embeds[1:]:
+            await interaction.followup.send(embed=embed)
 
 
 async def setup(bot):
