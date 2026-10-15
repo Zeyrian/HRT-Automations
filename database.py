@@ -185,11 +185,13 @@ def backup_database():
 
 
 def wipe_all_shifts():
-    """Deletes every shift and break. Returns the user IDs that had an open shift."""
-    open_users = [
-        row[0] for row in db.execute("SELECT user_id FROM shifts WHERE end_ts IS NULL")
-    ]
+    """Deletes every shift and break. Returns [(user_id, on_break)] for members who had an open shift."""
+    rows = db.execute(
+        """SELECT s.user_id,
+                  EXISTS(SELECT 1 FROM breaks b WHERE b.shift_id = s.id AND b.end_ts IS NULL)
+           FROM shifts s WHERE s.end_ts IS NULL"""
+    ).fetchall()
     db.execute("DELETE FROM breaks")
     db.execute("DELETE FROM shifts")
     db.commit()
-    return open_users
+    return [(uid, bool(on_break)) for uid, on_break in rows]
