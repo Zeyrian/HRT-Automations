@@ -17,7 +17,7 @@ from database import (
     total_time,
 )
 from utils import fmt
-from views.shift_panel import ShiftView, build_embed
+from views.shift_panel import ShiftView
 from views.admin_panel import AdminView, build_admin_embed
 
 
@@ -35,8 +35,10 @@ class Shifts(commands.GroupCog, group_name="shift", group_description="HRT shift
     @app_commands.command(name="manage", description="Open your shift panel")
     async def manage(self, interaction: discord.Interaction):
         view = ShiftView(interaction.user)
-        await interaction.response.send_message(embed=build_embed(interaction.user), view=view)
-        view.message = await interaction.original_response()
+        await interaction.response.send_message(
+            view=view, allowed_mentions=discord.AllowedMentions.none()
+        )
+        view.interaction = interaction
 
     @app_commands.command(name="active", description="See who is currently on shift")
     async def active(self, interaction: discord.Interaction):
