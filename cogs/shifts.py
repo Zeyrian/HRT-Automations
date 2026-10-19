@@ -19,6 +19,7 @@ from database import (
 from utils import fmt
 from views.shift_panel import ShiftView
 from views.admin_panel import AdminView, build_admin_embed
+from ui_cards import send_card
 
 
 @app_commands.guild_only()
@@ -89,13 +90,18 @@ class Shifts(commands.GroupCog, group_name="shift", group_description="HRT shift
         else:
             status, color = "On Duty", discord.Color.green()
 
-        embed = discord.Embed(title="Shift Time", color=color)
-        embed.set_author(name=target.display_name, icon_url=target.display_avatar.url)
-        embed.add_field(name="Total time on duty", value=fmt(total_time(target.id, now)), inline=False)
-        embed.add_field(name="Shifts logged", value=str(count_shifts(target.id)), inline=True)
-        embed.add_field(name="Status", value=status, inline=True)
-        embed.set_footer(text="Break time is excluded")
-        await interaction.response.send_message(embed=embed)
+        await send_card(
+            interaction,
+            title="Shift Time",
+            description=target.mention,
+            fields=[
+                ("Total time on duty", fmt(total_time(target.id, now))),
+                ("Shifts logged", str(count_shifts(target.id))),
+                ("Status", status),
+            ],
+            footer="Break time is excluded.",
+        )
+
 
     @app_commands.command(name="leaderboard", description="Shift time leaderboard")
     async def leaderboard(self, interaction: discord.Interaction):
