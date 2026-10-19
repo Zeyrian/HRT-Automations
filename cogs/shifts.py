@@ -92,7 +92,7 @@ class Shifts(commands.GroupCog, group_name="shift", group_description="HRT shift
 
         await send_card(
             interaction,
-            title="Shift Time",
+            title="HRT | Shift Time",
             description=target.mention,
             fields=[
                 ("Total time on duty", fmt(total_time(target.id, now))),
