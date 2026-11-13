@@ -1,13 +1,9 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from leaderboard import build_leaderboard_embed
-from views.leaderboard import LeaderboardView
 
-import config
 from checks import admin_only, is_shift_member
 from database import (
-    all_totals,
     break_total,
     count_shifts,
     get_active_shifts,
@@ -16,10 +12,12 @@ from database import (
     now_ts,
     total_time,
 )
-from utils import fmt
-from views.shift_panel import ShiftView
-from views.admin_panel import AdminView, build_admin_embed
+from leaderboard import build_leaderboard_embed
 from ui_cards import send_card
+from utils import fmt
+from views.admin_panel import AdminView, build_admin_embed
+from views.leaderboard import LeaderboardView
+from views.shift_panel import ShiftView
 
 
 @app_commands.guild_only()
@@ -85,11 +83,11 @@ class Shifts(commands.GroupCog, group_name="shift", group_description="HRT shift
 
         open_shift = get_open_shift(target.id)
         if not open_shift:
-            status, color = "Off Duty", discord.Color.light_grey()
+            status = "Off Duty"
         elif get_open_break(open_shift[0]):
-            status, color = "On Break", discord.Color.orange()
+            status = "On Break"
         else:
-            status, color = "On Duty", discord.Color.green()
+            status = "On Duty"
 
         await send_card(
             interaction,
