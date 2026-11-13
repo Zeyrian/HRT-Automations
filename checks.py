@@ -13,7 +13,7 @@ def has_any_role(member, role_ids):
 
 
 def is_shift_admin(member):
-    return has_any_role(member, config.SHIFT_ADMIN_ROLE_IDS)
+    return has_any_role(member, config.SHIFT_ADMIN_ROLE_ID)
 
 
 def is_shift_member(member):
