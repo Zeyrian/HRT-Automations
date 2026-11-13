@@ -46,6 +46,14 @@ class Shifts(commands.GroupCog, group_name="shift", group_description="HRT shift
         now = now_ts()
         rows = get_active_shifts()
 
+        if not rows:
+            await send_card(
+                interaction,
+                title="HRT | Active Shifts",
+                description="Nobody is on shift right now.",
+            )
+            return
+
         on_duty, on_break = [], []
         for shift_id, uid, start in rows:
             worked = now - start - break_total(shift_id, now)
@@ -55,26 +63,19 @@ class Shifts(commands.GroupCog, group_name="shift", group_description="HRT shift
             else:
                 on_duty.append(line)
 
-        if not rows:
-            embed = discord.Embed(
-                title="Active Shifts",
-                description="Nobody is on shift right now.",
-                color=discord.Color.light_grey(),
-            )
-        else:
-            sections = []
-            if on_duty:
-                sections.append("**On Duty**\n" + "\n".join(on_duty))
-            if on_break:
-                sections.append("**On Break**\n" + "\n".join(on_break))
-            embed = discord.Embed(
-                title="Active Shifts",
-                description="\n\n".join(sections),
-                color=discord.Color.green(),
-            )
-            embed.set_footer(text=f"{len(rows)} on shift")
+        fields = []
+        if on_duty:
+            fields.append((f"On Duty — {len(on_duty)}", "\n".join(on_duty)))
+        if on_break:
+            fields.append((f"On Break — {len(on_break)}", "\n".join(on_break)))
 
-        await interaction.response.send_message(embed=embed)
+        await send_card(
+            interaction,
+            title="HRT | Active Shifts",
+            description=f"{len(rows)} on shift",
+            fields=fields,
+            footer="Break time is excluded.",
+        )
 
     @app_commands.command(name="time", description="Show total shift time")
     @app_commands.describe(member="Member to check (defaults to you)")
