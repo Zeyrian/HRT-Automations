@@ -8,8 +8,12 @@ def has_role(member, role_id):
     return any(role.id == role_id for role in getattr(member, "roles", []))
 
 
+def has_any_role(member, role_ids):
+    return any(role.id in role_ids for role in getattr(member, "roles", []))
+
+
 def is_shift_admin(member):
-    return has_role(member, config.SHIFT_ADMIN_ROLE_ID)
+    return has_any_role(member, config.SHIFT_ADMIN_ROLE_IDS)
 
 
 def is_shift_member(member):
